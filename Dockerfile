@@ -1,48 +1,30 @@
-from python:3.8.16-slim-buster
+# Use Python 3.8 slim with Bullseye (more secure & maintained)
+FROM python:3.8-slim-bullseye
 
-RUN apt update
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
-# kubectl
-RUN apt install -y gpg ca-certificates curl bash-completion apt-transport-https --no-install-recommends
-RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-RUN install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-RUN mkdir /root/.kube
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
-# kubectl autocomplete
-RUN echo 'source /etc/bash_completion' >> ~/.bashrc
-RUN echo 'source <(kubectl completion bash)' >>~/.bashrc
-RUN echo 'alias k=kubectl' >>~/.bashrc
-RUN echo 'complete -o default -F __start_kubectl k' >>~/.bashrc
+# Set work directory
+WORKDIR /app
 
-# heml
-RUN curl https://baltocdn.com/helm/signing.asc | gpg --dearmor > /usr/share/keyrings/helm.gpg
-RUN echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main" > /etc/apt/sources.list.d/helm-stable-debian.list
-RUN apt update
-RUN apt install -y helm
+# Copy requirements first (for caching)
+COPY requirements.txt .
 
-# Apache ab tools for benchmark
-RUN apt install -y apache2-utils --no-install-recommends
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
-# VIM, nano, iproute2, iputils-ping
-RUN apt install -y vim nano iproute2 iputils-ping --no-install-recommends
+# Copy project files
+COPY . .
 
-# clean up
-RUN apt clean
+# Expose application port (adjust if needed)
+EXPOSE 5000
 
-# welcome message
-COPY welcome.sh /etc/profile.d
-RUN chmod a+rx /etc/profile.d/welcome.sh
-RUN echo "/etc/profile.d/welcome.sh" >> /root/.bashrc
-
-# muBench software
-RUN apt install -y git libpangocairo-1.0-0 --no-install-recommends
-COPY . /root/muBench
-#WORKDIR /root
-#RUN git clone https://github.com/mSvcBench/muBench.git
-RUN pip3 install -r /root/muBench/requirements.txt
-
-WORKDIR /root/muBench
-
-CMD [ "sleep", "infinity"]
-
-
+# Start the app (change if your entrypoint is different)
+CMD ["python", "app.py"]

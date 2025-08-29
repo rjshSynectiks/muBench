@@ -1,33 +1,39 @@
-name: CI/CD to Kubernetes
+name: CI/CD Pipeline
 
 on:
   push:
     branches:
-      - main
+      - main   # runs only on main branch
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
+      # Checkout repo
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # Login to Docker Hub
       - name: Log in to Docker Hub
         run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
+      # Build Docker image
       - name: Build Docker image
-        run: docker build -t rjshsynectiks/mubench:latest .
+        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/mubench:latest .
 
+      # Push Docker image
       - name: Push Docker image
-        run: docker push rjshsynectiks/mubench:latest
+        run: docker push ${{ secrets.DOCKER_USERNAME }}/mubench:latest
 
-      - name: Configure kubectl
+      # Setup kubectl
+      - name: Set up kubectl
         run: |
           mkdir -p $HOME/.kube
           echo "${{ secrets.KUBECONFIG }}" | base64 --decode > $HOME/.kube/config
 
+      # Deploy to Kubernetes
       - name: Deploy to Kubernetes
         run: |
-          kubectl apply -f k8s/
+          kubectl set image deployment/mubench-deployment mubench=${{ secrets.DOCKER_USERNAME }}/mubench:latest
           kubectl rollout status deployment/mubench-deployment
