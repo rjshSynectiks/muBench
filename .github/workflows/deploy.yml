@@ -26,7 +26,7 @@ jobs:
       - name: Push Docker image
         run: docker push ${{ secrets.DOCKER_USERNAME }}/mubench:latest
 
-      # Setup kubectl
+      # Setup kubectl with kubeconfig
       - name: Set up kubectl
         run: |
           mkdir -p $HOME/.kube
